@@ -1,0 +1,9 @@
+CHIP Example {
+    IN a, b;
+    OUT out;
+
+    PARTS:
+    	Test(a=a,b=b,out=out);
+    	Test(a=a,b=b,out=out);
+    	Test(a=a,b=b,out=out);
+}
