@@ -17,6 +17,15 @@ use nom::IResult;
 use nom::bytes::complete::{tag, take_until};
 use nom::multi::many0;
 
+
+/// Represents a pin
+#[derive(Debug)]
+pub struct Pin {
+    name: String,
+    start: u32,
+    end: u32,
+}
+
 /// Represents a parsed chip
 #[derive(Debug)]
 pub struct Chip {
@@ -41,22 +50,17 @@ fn part(text: &str) -> IResult<&str, Part> {
     let (text, name) = take_until("(")(text)?;
     let (text, _) = tag("(")(text)?;
     let (text, pins) = take_until(")")(text)?;
-    let pins2 = pins
+    let pins_vec: (Vec<String>, Vec<String>) = pins
         .replace(" ", "")
         .split(',')
-        .map(|x| x.to_string())
-        .collect::<Vec<String>>();
-    let mut part = Part {
+        .map(|x| x.split('=').collect::<Vec<&str>>())
+        .map(|x| (x[0].to_string(), x[1].to_string()))
+        .unzip();
+    Ok((text, Part {
         name: name.to_string(),
-        internal: vec![],
-        external: vec![],
-    };
-    for i in pins2 {
-        let a = i.split('=').collect::<Vec<&str>>();
-        part.internal.push(a[0].to_string());
-        part.external.push(a[1].to_string());
-    }
-    return Ok((text, part))
+        internal: pins_vec.0,
+        external: pins_vec.1,
+    }))
 }
 
 fn inputs(text: &str) -> IResult<&str, Vec<String>> {
