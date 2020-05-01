@@ -1,12 +1,23 @@
-#[macro_use]
-extern crate nom;
+//! test
+
+#![forbid(unsafe_code)]
+#![deny(
+missing_debug_implementations,
+missing_docs,
+trivial_casts,
+trivial_numeric_casts,
+unused_extern_crates,
+unused_import_braces,
+unused_qualifications,
+unused_results,
+warnings
+)]
 
 use nom::IResult;
-use nom::bytes::complete::{tag, take_while_m_n, take_until, take_till, take_while};
-use nom::sequence::delimited;
-use nom::multi::{many0, many1};
-use nom::lib::std::fmt::Error;
+use nom::bytes::complete::{tag, take_until};
+use nom::multi::many0;
 
+/// Represents a parsed chip
 #[derive(Debug)]
 pub struct Chip {
     name: String,
@@ -15,6 +26,7 @@ pub struct Chip {
     parts: Vec<Part>,
 }
 
+/// Represents an internal chip
 #[derive(Debug)]
 pub struct Part {
     name: String,
@@ -31,7 +43,7 @@ fn part(text: &str) -> IResult<&str, Part> {
     let (text, pins) = take_until(")")(text)?;
     let pins2 = pins
         .replace(" ", "")
-        .split(",")
+        .split(',')
         .map(|x| x.to_string())
         .collect::<Vec<String>>();
     let mut part = Part {
@@ -40,7 +52,7 @@ fn part(text: &str) -> IResult<&str, Part> {
         external: vec![],
     };
     for i in pins2 {
-        let a = i.split("=").collect::<Vec<&str>>();
+        let a = i.split('=').collect::<Vec<&str>>();
         part.internal.push(a[0].to_string());
         part.external.push(a[1].to_string());
     }
@@ -50,13 +62,13 @@ fn part(text: &str) -> IResult<&str, Part> {
 fn inputs(text: &str) -> IResult<&str, Vec<String>> {
     let (text, _) = tag("IN ")(text)?;
     let (text, inputs) = take_until(";")(text)?;
-    return Ok((text, inputs.replace(" ", "").split(",").map(|x| x.to_string()).collect::<Vec<String>>()))
+    return Ok((text, inputs.replace(" ", "").split(',').map(|x| x.to_string()).collect::<Vec<String>>()))
 }
 
 fn outputs(text: &str) -> IResult<&str, Vec<String>> {
     let (text, _) = tag("OUT ")(text)?;
     let (text, inputs) = take_until(";")(text)?;
-    return Ok((text, inputs.replace(" ", "").split(",").map(|x| x.to_string()).collect::<Vec<String>>()))
+    return Ok((text, inputs.replace(" ", "").split(',').map(|x| x.to_string()).collect::<Vec<String>>()))
 }
 
 fn parts(text: &str) -> IResult<&str, Vec<Part>> {
@@ -65,7 +77,11 @@ fn parts(text: &str) -> IResult<&str, Vec<Part>> {
     return Ok((text, parts))
 }
 
+
+/// parse a string in nand2tetris hack hdl into a Chip struct
 pub fn parse_hdl(text: &str) -> IResult<&str, Chip> {
+    // let comments_regex = Regex::new("//.*$").unwrap();
+    // let text = comments_regex.replace(text, "").into_owned().as_str();
     let (text, _) = tag("CHIP ")(text)?;
     let (text, chip_name) = take_until(" ")(text)?;
 
