@@ -10,7 +10,7 @@ fn main() {
     };
 
     println!("{:#?}", match parse_hdl(&hdl) {
-        Ok(x) => x.1,
+        Ok(x) => x,
         Err(e) => panic!("{}",e),
     });
 }

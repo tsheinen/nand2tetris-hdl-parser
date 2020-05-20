@@ -8,4 +8,4 @@ edition = "2018"
 
 [dependencies]
 nom = "5"
-regex = "1"
+simple-error = "0.2"

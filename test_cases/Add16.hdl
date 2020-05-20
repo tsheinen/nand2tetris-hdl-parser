@@ -1,0 +1,39 @@
+//Name and UIN
+
+/**
+ * Adds two 16-bit values. Need to use HA and FA as there is no input carry provided
+ * The most significant carry bit is ignored.
+ */
+
+CHIP Add16 {
+    IN a[16], b[16];
+    OUT out[16];
+
+    PARTS:
+    Add4(a[0]=a[0], a[1]=a[1], a[2]=a[2],a[3]=a[3],
+      b[0]=b[0],b[1]=b[1],b[2]=b[2],b[3]=b[3],
+      carryIn=false,
+      out[0]=out[0], out[1]=out[1],out[2]=out[2],out[3]=out[3],
+      carry=carry0
+    ); 
+
+    Add4(a[0]=a[4], a[1]=a[5], a[2]=a[6],a[3]=a[7],
+      b[0]=b[4],b[1]=b[5],b[2]=b[6],b[3]=b[7],
+      carryIn=carry0,
+      out[0]=out[4], out[1]=out[5],out[2]=out[6],out[3]=out[7],
+      carry=carry1
+    );
+
+    Add4(a[0]=a[8], a[1]=a[9], a[2]=a[10],a[3]=a[11],
+      b[0]=b[8],b[1]=b[9],b[2]=b[10],b[3]=b[11],
+      carryIn=carry1,
+      out[0]=out[8],out[1]=out[9],out[2]=out[10],out[3]=out[11],
+      carry=carry2
+    );
+    Add4(a[0]=a[12], a[1]=a[13], a[2]=a[14],a[3]=a[15],
+      b[0]=b[12], b[1]=b[13], b[2]=b[14],b[3]=b[15],
+      carryIn=carry2,
+      out[0]=out[12], out[1]=out[13], out[2]=out[14],out[3]=out[15],
+      carry=drop
+    );
+}

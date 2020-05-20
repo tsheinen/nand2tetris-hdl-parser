@@ -3,7 +3,7 @@ CHIP Example {
     OUT out;
 
     PARTS:
-    	Test(a=a,b=b,out=out);
+    	Test(a[0..3]=a[0..3],b=b,out=out);
     	Test(a=a,b=b,out=out);
     	Test(a=a,b=b,out=out);
 }
