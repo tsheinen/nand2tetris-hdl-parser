@@ -1,5 +1,5 @@
 [package]
-name = "hack-hdl"
+name = "hack-hdl-parser"
 version = "0.1.0"
 authors = ["Teddy Heinen <teddy@heinen.dev>"]
 edition = "2018"
