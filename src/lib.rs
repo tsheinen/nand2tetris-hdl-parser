@@ -28,7 +28,7 @@ use core::fmt;
 /// A type that represents a pin
 ///
 /// This type use a `String` to store the pin name and `u32` to store both the start and end range of the pin
-#[derive(Eq, PartialEq, Clone)]
+#[derive(Eq, PartialEq, Hash, Clone)]
 pub struct Pin {
     name: String,
     start: u32,
@@ -49,7 +49,7 @@ impl fmt::Debug for Pin {
 /// A type that represents a Chip
 ///
 /// This type use a `String` to store the chip name, `Vec<Pin>` to store inputs and outputs, and `Vec<Part>` to store the parts that make up the chip
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Hash, Clone)]
 pub struct Chip {
     name: String,
     inputs: Vec<Pin>,
@@ -60,7 +60,7 @@ pub struct Chip {
 /// A type that represents a Part
 ///
 /// This type use a `String` to store the chip name and `Vec<Pin>` to store the connections from the main chip
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Hash, Clone)]
 pub struct Part {
     name: String,
     internal: Vec<Pin>,
@@ -128,23 +128,6 @@ fn part(text: &str) -> IResult<&str, Part> {
         name: name.to_string(),
         internal: pins.0,
         external: pins.1,
-    }))
-}
-
-fn interface_pin(text: &str) -> IResult<&str, Pin> {
-    let (text, _) = not(tag(";"))(text)?;
-    let (text, name) = take_till(|x| !is_alphabetic(x as u8))(text)?;
-    let (text, (start, end)) = match internal_pin(text) {
-        Ok((text, (start, end))) => (text, (start, end)),
-        Err(_) => (text, (0, 0))
-    };
-
-    let (text, _) = opt(tag(","))(text)?;
-    let (text, _) = separator(text)?;
-    Ok((text, Pin {
-        name: name.to_string(),
-        start: start,
-        end: end,
     }))
 }
 
