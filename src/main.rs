@@ -1,8 +1,7 @@
-
-
 use std::{fs, env};
 use hack_hdl_parser::parse_hdl;
 
+#[cfg_attr(tarpaulin, skip)]
 fn main() {
     let hdl = match fs::read_to_string(env::args().nth(1).unwrap()) {
         Ok(f) => f,

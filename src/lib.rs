@@ -27,7 +27,15 @@ use core::fmt;
 
 /// A type that represents a pin
 ///
-/// This type use a `String` to store the pin name and `u32` to store both the start and end range of the pin
+/**
+```rust
+pub struct Pin {
+    name: String,
+    start: u32,
+    end: u32,
+}
+```
+*/
 #[derive(Eq, PartialEq, Hash, Clone)]
 pub struct Pin {
     name: String,
@@ -46,9 +54,19 @@ impl fmt::Debug for Pin {
 }
 
 
-/// A type that represents a Chip
+/// A type that represents a chip
 ///
-/// This type use a `String` to store the chip name, `Vec<Pin>` to store inputs and outputs, and `Vec<Part>` to store the parts that make up the chip
+/**
+```rust
+use hack_hdl_parser::{Part, Pin};
+pub struct Chip {
+    name: String,
+    inputs: Vec<Pin>,
+    outputs: Vec<Pin>,
+    parts: Vec<Part>,
+}
+```
+*/
 #[derive(Debug, Eq, PartialEq, Hash, Clone)]
 pub struct Chip {
     name: String,
@@ -57,9 +75,18 @@ pub struct Chip {
     parts: Vec<Part>,
 }
 
-/// A type that represents a Part
+/// A type that represents a part
 ///
-/// This type use a `String` to store the chip name and `Vec<Pin>` to store the connections from the main chip
+/**
+```rust
+use hack_hdl_parser::Pin;
+pub struct Part {
+    name: String,
+    internal: Vec<Pin>,
+    external: Vec<Pin>,
+}
+```
+*/
 #[derive(Debug, Eq, PartialEq, Hash, Clone)]
 pub struct Part {
     name: String,
@@ -67,69 +94,6 @@ pub struct Part {
     external: Vec<Pin>,
 }
 
-fn internal_pin(text: &str) -> IResult<&str, (u32, u32)> {
-    fn internal_pin_single(text: &str) -> IResult<&str, (u32, u32)> {
-        let (text, _) = tag("[")(text)?;
-        let (text, index) = digit1(text)?;
-        let (text, _) = tag("]")(text)?;
-
-        Ok((text, (index.parse::<u32>().unwrap(), index.parse::<u32>().unwrap())))
-    }
-    fn internal_pin_range(text: &str) -> IResult<&str, (u32, u32)> {
-        let (text, _) = tag("[")(text)?;
-        let (text, start) = digit1(text)?;
-        let (text, _) = tag("..")(text)?;
-        let (text, end) = digit1(text)?;
-        let (text, _) = tag("]")(text)?;
-
-        Ok((text, (start.parse::<u32>().unwrap(), end.parse::<u32>().unwrap())))
-    }
-    alt((internal_pin_single, internal_pin_range))(text)
-}
-
-fn part_pin(text: &str) -> IResult<&str, Pin> {
-    let (text, _) = take_till(|x| is_alphabetic(x as u8))(text)?;
-    let (text, name) = take_till(|x| !is_alphabetic(x as u8))(text)?;
-    return match internal_pin(text) {
-        Ok((text, (start, end))) => Ok((text, Pin {
-            name: name.to_string(),
-            start,
-            end,
-        })),
-        Err(_) => return Ok((text, Pin {
-            name: name.to_string(),
-            start: 0,
-            end: 0,
-        }))
-    };
-}
-
-// TODO make this less awful
-fn part(text: &str) -> IResult<&str, Part> {
-    fn internal_part(text: &str) -> IResult<&str, (Pin, Pin)> {
-        let (text, _) = not(tag(")"))(text)?;
-        let (text, pin1) = part_pin(text)?;
-        let (text, _) = tag("=")(text)?;
-        let (text, pin2) = part_pin(text)?;
-        Ok((text, (pin1, pin2)))
-    }
-    let (text, _) = take_till(|x| is_alphabetic(x as u8))(text)?;
-    let (text, name) = take_until("(")(text)?;
-    let (text, _) = tag("(")(text)?;
-    let (text, pins) = many0(internal_part)(text)?;
-    let pins = pins
-        .iter()
-        .map(|&(ref a, ref b)| (a.clone(), b.clone()))
-        .unzip();
-
-    let (text, _) = tag(");")(text)?;
-    let (text, _) = separator(text)?;
-    Ok((text, Part {
-        name: name.to_string(),
-        internal: pins.0,
-        external: pins.1,
-    }))
-}
 
 /// Try to consume whitespace, line comments, and multiline comments until all three fail on the same text
 /// Matches 0 or more
@@ -150,7 +114,92 @@ fn separator(text: &str) -> IResult<&str, ()> {
     Ok((many0(alt((|x| Ok((multispace1(x)?.0, ())), comment_line, comment_multiline)))(text)?.0, ()))
 }
 
+/// Parses a pin descriptor into a [Pin]
+///
+/// `a[0..3]` will become Pin { name: "a", start: 0, end: 3 }
+fn pin(text: &str) -> IResult<&str, Pin> {
+    /// parses a pin range descriptor into `(u32, u32)`.  Both u32 will be the same if the range is a single number.
+    ///
+    /// `[0..3]` will parse into (0, 3) and `[0]` will parse into (0,0)
+    fn pin_index(text: &str) -> IResult<&str, (u32, u32)> {
+        fn internal_pin_single(text: &str) -> IResult<&str, (u32, u32)> {
+            let (text, _) = tag("[")(text)?;
+            let (text, index) = digit1(text)?;
+            let (text, _) = tag("]")(text)?;
+
+            Ok((text, (index.parse::<u32>().unwrap(), index.parse::<u32>().unwrap())))
+        }
+        fn internal_pin_range(text: &str) -> IResult<&str, (u32, u32)> {
+            let (text, _) = tag("[")(text)?;
+            let (text, start) = digit1(text)?;
+            let (text, _) = tag("..")(text)?;
+            let (text, end) = digit1(text)?;
+            let (text, _) = tag("]")(text)?;
+
+            Ok((text, (start.parse::<u32>().unwrap(), end.parse::<u32>().unwrap())))
+        }
+        alt((internal_pin_single, internal_pin_range))(text)
+    }
+
+    let (text, _) = take_till(|x| is_alphabetic(x as u8))(text)?;
+    let (text, name) = take_till(|x| !is_alphabetic(x as u8))(text)?;
+    return match pin_index(text) {
+        Ok((text, (start, end))) => Ok((text, Pin {
+            name: name.to_string(),
+            start,
+            end,
+        })),
+        Err(_) => return Ok((text, Pin {
+            name: name.to_string(),
+            start: 0,
+            end: 0,
+        }))
+    };
+}
+
+
+/// Parses a part descriptor into a [Part]
+///
+/// `Test(a[0..3]=a[0..3],b=b,out=out);` will become a part with the name `Test` and the pins parsed with [part_pin]
+fn part(text: &str) -> IResult<&str, Part> {
+    fn internal_part(text: &str) -> IResult<&str, (Pin, Pin)> {
+        let (text, _) = not(tag(")"))(text)?;
+        let (text, pin1) = pin(text)?;
+        let (text, _) = tag("=")(text)?;
+        let (text, pin2) = pin(text)?;
+        Ok((text, (pin1, pin2)))
+    }
+    let (text, _) = take_till(|x| is_alphabetic(x as u8))(text)?;
+    let (text, name) = take_until("(")(text)?;
+    let (text, _) = tag("(")(text)?;
+    let (text, pins) = many0(internal_part)(text)?;
+    let pins = pins
+        .iter()
+        .map(|&(ref a, ref b)| (a.clone(), b.clone()))
+        .unzip();
+
+    let (text, _) = tag(");")(text)?;
+    let (text, _) = separator(text)?;
+    Ok((text, Part {
+        name: name.to_string(),
+        internal: pins.0,
+        external: pins.1,
+    }))
+}
+
+/// parse input/output pin line with arbitrary label
+///
+/// `IN a, b;` would parse into a `Vec<Pin>` with two pins - a and b
 fn parse_io_pins<'a>(text: &'a str, label: &str) -> IResult<&'a str, Vec<Pin>> {
+    fn interface_pin(text: &str) -> IResult<&str, Pin> {
+        let (text, _) = not(tag(";"))(text)?;
+        let (text, pin) = pin(text)?;
+
+        let (text, _) = opt(tag(","))(text)?;
+        let (text, _) = separator(text)?;
+        Ok((text, pin))
+    }
+
     let (text, _) = separator(text)?;
     let (text, _) = take_until(label)(text)?;
 
