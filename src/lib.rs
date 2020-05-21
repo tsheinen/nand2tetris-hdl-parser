@@ -20,9 +20,8 @@ use nom::character::{is_alphabetic, is_alphanumeric};
 use nom::character::complete::{line_ending, multispace1};
 use nom::character::streaming::digit1;
 use nom::combinator::{not, opt};
-use nom::IResult;
+use nom::{IResult, Err};
 use nom::multi::{many0, many1};
-use simple_error::SimpleError;
 use core::fmt;
 
 /// A type that represents a pin
@@ -214,8 +213,8 @@ fn parse_io_pins<'a>(text: &'a str, label: &str) -> IResult<&'a str, Vec<Pin>> {
 }
 
 
-/// parse_hdl will consume text and return `Result<Chip, Error>` depending on if it can successfully be parsed
-pub fn parse_hdl(text: &str) -> Result<Chip, SimpleError> {
+/// parse_hdl will consume text and return `Result<Chip, Err<(&str, nom::error::ErrorKind)>>` depending on if it can successfully be parsed
+pub fn parse_hdl(text: &str) -> Result<Chip, Err<(&str, nom::error::ErrorKind)>> {
     fn parse_hdl_internal(text: &str) -> IResult<&str, Chip> {
         let (text, _) = separator(text)?;
         let (text, _) = tag("CHIP")(text)?;
@@ -242,7 +241,7 @@ pub fn parse_hdl(text: &str) -> Result<Chip, SimpleError> {
 
     match parse_hdl_internal(text) {
         Ok((_, chip)) => Ok(chip),
-        Err(_) => Err(SimpleError::new("Failed to parse"))
+        Err(e) => Err(e)
     }
 }
 
@@ -255,7 +254,7 @@ mod tests {
 
     #[test]
     fn fails_parse() -> Result<(), Error> {
-        assert_eq!(parse_hdl("").err().unwrap().as_str(), "Failed to parse");
+        assert_eq!(format!("{}",parse_hdl("aaaa ").err().unwrap()), "Parsing Error: (\"aaaa \", Tag)");
         Ok(())
     }
 
