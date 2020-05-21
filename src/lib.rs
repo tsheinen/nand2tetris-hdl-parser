@@ -1,4 +1,4 @@
-//! test
+//! parser for nand2tetris HDL
 
 #![forbid(unsafe_code)]
 #![deny(
@@ -58,7 +58,7 @@ impl fmt::Debug for Pin {
 ///
 /**
 ```rust
-use hack_hdl_parser::{Part, Pin};
+use nand2tetris_hdl_parser::{Part, Pin};
 pub struct Chip {
     name: String,
     inputs: Vec<Pin>,
@@ -79,7 +79,7 @@ pub struct Chip {
 ///
 /**
 ```rust
-use hack_hdl_parser::Pin;
+use nand2tetris_hdl_parser::Pin;
 pub struct Part {
     name: String,
     internal: Vec<Pin>,

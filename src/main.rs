@@ -1,5 +1,5 @@
 use std::{fs, env};
-use hack_hdl_parser::parse_hdl;
+use nand2tetris_hdl_parser::parse_hdl;
 
 #[cfg_attr(tarpaulin, skip)]
 fn main() {
