@@ -127,7 +127,7 @@ fn pin(text: &str) -> IResult<&str, Pin> {
             let (text, index) = digit1(text)?;
             let (text, _) = tag("]")(text)?;
 
-            Ok((text, (index.parse::<u32>().unwrap(), index.parse::<u32>().unwrap())))
+            Ok((text, (index.parse::<u32>().unwrap_or(0), index.parse::<u32>().unwrap_or(0))))
         }
         fn internal_pin_range(text: &str) -> IResult<&str, (u32, u32)> {
             let (text, _) = tag("[")(text)?;
@@ -136,7 +136,7 @@ fn pin(text: &str) -> IResult<&str, Pin> {
             let (text, end) = digit1(text)?;
             let (text, _) = tag("]")(text)?;
 
-            Ok((text, (start.parse::<u32>().unwrap(), end.parse::<u32>().unwrap())))
+            Ok((text, (start.parse::<u32>().unwrap_or(0), end.parse::<u32>().unwrap_or(0))))
         }
         alt((internal_pin_single, internal_pin_range))(text)
     }
