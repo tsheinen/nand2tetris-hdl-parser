@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 nom = "5"
 simple-error = "0.2"
+snafu = "0.6.8"

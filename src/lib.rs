@@ -14,7 +14,6 @@ warnings
 )]
 
 
-
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take_till, take_until};
 use nom::character::{is_alphabetic, is_alphanumeric};
@@ -24,33 +23,34 @@ use nom::combinator::{not, opt};
 use nom::IResult;
 use nom::multi::{many0, many1};
 use simple_error::SimpleError;
+use core::fmt;
 
 /// A type that represents a pin
 ///
 /// This type use a `String` to store the pin name and `u32` to store both the start and end range of the pin
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Eq, PartialEq)]
 pub struct Pin {
     name: String,
     start: u32,
     end: u32,
 }
 
-// impl fmt::Debug for Pin {
-//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         if self.start == self.start {
-//             f.debug_struct("Pin")
-//                 .field("name", &self.name)
-//                 .field("index", &self.start)
-//                 .finish()
-//         } else {
-//             f.debug_struct("Pin")
-//                 .field("name", &self.name)
-//                 .field("start", &self.start)
-//                 .field("end", &self.end)
-//                 .finish()
-//         }
-//     }
-// }
+impl fmt::Debug for Pin {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.start == self.start {
+            f.debug_struct("Pin")
+                .field("name", &self.name)
+                .field("index", &self.start)
+                .finish()
+        } else {
+            f.debug_struct("Pin")
+                .field("name", &self.name)
+                .field("start", &self.start)
+                .field("end", &self.end)
+                .finish()
+        }
+    }
+}
 
 
 /// A type that represents a Chip
@@ -127,6 +127,8 @@ fn part(text: &str) -> IResult<&str, Part> {
             (lhs, rhs)
         })
         .unzip();
+    let (text, _) = tag(");")(text)?;
+    let (text, _) = separator(text)?;
     Ok((text, Part {
         name: name.to_string(),
         internal: pins_vec.0,
@@ -136,9 +138,7 @@ fn part(text: &str) -> IResult<&str, Part> {
 
 fn interface_pin(text: &str) -> IResult<&str, Pin> {
     let (text, _) = not(tag(";"))(text)?;
-    let (text, name) = take_till(|x| {
-        !is_alphabetic(x as u8)
-    })(text)?;
+    let (text, name) = take_till(|x| !is_alphabetic(x as u8))(text)?;
     let (text, (start, end)) = match internal_pin(text) {
         Ok((text, (start, end))) => (text, (start, end)),
         Err(_) => (text, (0, 0))
@@ -152,6 +152,7 @@ fn interface_pin(text: &str) -> IResult<&str, Pin> {
         end: end,
     }))
 }
+
 /// Try to consume whitespace, line comments, and multiline comments until all three fail on the same text
 /// Matches 0 or more
 fn separator(text: &str) -> IResult<&str, ()> {
@@ -168,17 +169,23 @@ fn separator(text: &str) -> IResult<&str, ()> {
 
         Ok((text, ()))
     }
-
-    let mut resp = text;
-    loop {
-        let result = alt((|x| Ok((multispace1(x)?.0, ())), comment_line, comment_multiline))(resp);
-        if !result.is_ok() {
-            break;
-        }
-        resp = result?.0;
-    }
-    Ok((resp, ()))
+    Ok((many0(alt((|x| Ok((multispace1(x)?.0, ())), comment_line, comment_multiline)))(text)?.0,()))
 }
+
+fn parse_io_pins<'a>(text: &'a str, label: &str) -> IResult<&'a str, Vec<Pin>> {
+    let (text, _) = separator(text)?;
+    let (text, _) = take_until(label)(text)?;
+
+    let (text, _) = separator(text)?;
+    let (text, _) = tag(label)(text)?;
+    let (text, _) = separator(text)?;
+
+    let (text, inputs) = many1(interface_pin)(text)?;
+
+    let (text, _) = separator(text)?;
+    Ok((text, inputs))
+}
+
 
 /// parse_hdl will consume text and return `Result<Chip, Error>` depending on if it can successfully be parsed
 pub fn parse_hdl(text: &str) -> Result<Chip, SimpleError> {
@@ -189,25 +196,12 @@ pub fn parse_hdl(text: &str) -> Result<Chip, SimpleError> {
         let (text, _) = separator(text)?;
         let (text, chip_name) = take_till(|x| !is_alphanumeric(x as u8))(text)?;
 
-        let (text, _) = separator(text)?;
-        let (text, _) = take_until("IN")(text)?;
+        let (text, inputs) = parse_io_pins(text, "IN")?;
+        let (text, outputs) = parse_io_pins(text, "OUT")?;
 
-        let (text, _) = separator(text)?;
-        let (text, _) = tag("IN")(text)?;
-        let (text, _) = separator(text)?;
 
-        let (text, inputs) = many1(interface_pin)(text)?;
-
-        let (text, _) = separator(text)?;
-        let (text, _) = take_until("OUT")(text)?;
-
-        let (text, _) = separator(text)?;
-        let (text, _) = tag("OUT")(text)?;
-        let (text, _) = separator(text)?;
-        let (text, outputs) = many1(interface_pin)(text)?;
         let (text, _) = take_until("PARTS:")(text)?;
         let (text, _) = tag("PARTS:")(text)?;
-
         let (text, _) = separator(text)?;
         let (text, parts) = many0(part)(text)?;
 
@@ -228,12 +222,12 @@ pub fn parse_hdl(text: &str) -> Result<Chip, SimpleError> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Chip, Pin, Part, parse_hdl};
+    use crate::{Chip, Pin, Part, parse_hdl, parse_io_pins};
     use std::fs;
     use std::io::Error;
 
     #[test]
-    fn example_hdl() -> Result<(), Error>{
+    fn example_hdl() -> Result<(), Error> {
         let example_hdl_text = fs::read_to_string("test_cases/example.hdl")?;
         let example_hdl_chip = Chip {
             name: "Example".to_string(),
@@ -371,6 +365,26 @@ mod tests {
             ],
         };
         assert_eq!(example_hdl_chip, parse_hdl(&example_hdl_text).unwrap());
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_io_pins() -> Result<(), Error> {
+        let text = "    IN a, b;
+";
+        let (_, pins) = parse_io_pins(text, "IN").unwrap_or(("", vec![]));
+        assert_eq!(pins, vec![
+            Pin {
+                name: "a".to_string(),
+                start: 0,
+                end: 0,
+            },
+            Pin {
+                name: "b".to_string(),
+                start: 0,
+                end: 0,
+            }
+        ]);
         Ok(())
     }
 }
