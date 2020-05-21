@@ -28,7 +28,7 @@ use core::fmt;
 /// A type that represents a pin
 ///
 /// This type use a `String` to store the pin name and `u32` to store both the start and end range of the pin
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Clone)]
 pub struct Pin {
     name: String,
     start: u32,
@@ -106,26 +106,28 @@ fn part_pin(text: &str) -> IResult<&str, Pin> {
 
 // TODO make this less awful
 fn part(text: &str) -> IResult<&str, Part> {
+    fn internal_part(text: &str) -> IResult<&str, (Pin, Pin)> {
+        let (text, _) = not(tag(")"))(text)?;
+        let (text, pin1) = part_pin(text)?;
+        let (text, _) = tag("=")(text)?;
+        let (text, pin2) = part_pin(text)?;
+        Ok((text, (pin1, pin2)))
+    }
     let (text, _) = take_till(|x| is_alphabetic(x as u8))(text)?;
     let (text, name) = take_until("(")(text)?;
     let (text, _) = tag("(")(text)?;
-    let (text, pins) = take_until(")")(text)?;
-    let pins_vec: (Vec<Pin>, Vec<Pin>) = pins
-        .replace(" ", "")
-        .split(',')
-        .map(|x| x.split('=').collect::<Vec<&str>>())
-        .map(|x| {
-            let (_, lhs) = part_pin(x[0]).unwrap();
-            let (_, rhs) = part_pin(x[1]).unwrap();
-            (lhs, rhs)
-        })
+    let (text, pins) = many0(internal_part)(text)?;
+    let pins = pins
+        .iter()
+        .map(|&(ref a, ref b)| (a.clone(), b.clone()))
         .unzip();
+
     let (text, _) = tag(");")(text)?;
     let (text, _) = separator(text)?;
     Ok((text, Part {
         name: name.to_string(),
-        internal: pins_vec.0,
-        external: pins_vec.1,
+        internal: pins.0,
+        external: pins.1,
     }))
 }
 
