@@ -37,17 +37,10 @@ pub struct Pin {
 
 impl fmt::Debug for Pin {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.start == self.start {
-            f.debug_struct("Pin")
-                .field("name", &self.name)
-                .field("index", &self.start)
-                .finish()
+        if self.start == self.end {
+            f.debug_struct("Pin").field("name", &self.name).field("index", &self.start).finish()
         } else {
-            f.debug_struct("Pin")
-                .field("name", &self.name)
-                .field("start", &self.start)
-                .field("end", &self.end)
-                .finish()
+            f.debug_struct("Pin").field("name", &self.name).field("start", &self.start).field("end", &self.end).finish()
         }
     }
 }
@@ -169,7 +162,7 @@ fn separator(text: &str) -> IResult<&str, ()> {
 
         Ok((text, ()))
     }
-    Ok((many0(alt((|x| Ok((multispace1(x)?.0, ())), comment_line, comment_multiline)))(text)?.0,()))
+    Ok((many0(alt((|x| Ok((multispace1(x)?.0, ())), comment_line, comment_multiline)))(text)?.0, ()))
 }
 
 fn parse_io_pins<'a>(text: &'a str, label: &str) -> IResult<&'a str, Vec<Pin>> {
@@ -225,6 +218,12 @@ mod tests {
     use crate::{Chip, Pin, Part, parse_hdl, parse_io_pins};
     use std::fs;
     use std::io::Error;
+
+    #[test]
+    fn fails_parse() -> Result<(), Error> {
+        assert_eq!(parse_hdl("").err().unwrap().as_str(), "Failed to parse");
+        Ok(())
+    }
 
     #[test]
     fn example_hdl() -> Result<(), Error> {
@@ -385,6 +384,27 @@ mod tests {
                 end: 0,
             }
         ]);
+        Ok(())
+    }
+
+    #[test]
+    fn test_pin_debug_display() -> Result<(), Error> {
+        let index_same_formatted: String = format!("{:?}", Pin {
+            name: "placeholder".to_string(),
+            start: 0,
+            end: 0,
+        }).chars().filter(|c| !c.is_whitespace()).collect();
+        let index_same_cmp: String = "Pin { name: \"placeholder\", index: 0 }".chars().filter(|c| !c.is_whitespace()).collect();
+        assert_eq!(index_same_formatted, index_same_cmp);
+
+        let index_different_formatted: String = format!("{:?}", Pin {
+            name: "placeholder".to_string(),
+            start: 3,
+            end: 4,
+        }).chars().filter(|c| !c.is_whitespace()).collect();
+        let index_different_cmp: String = "Pin { name: \"placeholder\", start: 3, end: 4 }".chars().filter(|c| !c.is_whitespace()).collect();
+        assert_eq!(index_different_formatted, index_different_cmp);
+
         Ok(())
     }
 }

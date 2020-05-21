@@ -1,9 +1,13 @@
+// Hello this is a single line comment :)
+/**
+* and this is a multiline comment
+*/
 CHIP Example {
     IN a, b;
     OUT out;
 
     PARTS:
     	Test(a[0..3]=a[0..3],b=b,out=out);
-    	Test(a=a,b=b,out=out);
+    	Test(a[0]=a,b=b,out=out);
     	Test(a=a,b=b,out=out);
 }
