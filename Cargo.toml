@@ -9,4 +9,10 @@ edition = "2018"
 [dependencies]
 nom = "5"
 simple-error = "0.2"
-snafu = "0.6.8"
+
+[dev-dependencies]
+criterion = "0.3"
+
+[[bench]]
+name = "parser"
+harness = false
