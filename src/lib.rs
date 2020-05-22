@@ -177,7 +177,12 @@ fn pin(text: &str) -> IResult<&str, Pin, VerboseError<&str>> {
     }
 
     let (text, _) = take_till(|x| is_alphabetic(x as u8))(text)?;
-    let (text, name) = take_till(|x| !is_alphabetic(x as u8))(text)?;
+    let (text, name) = take_till(|x| {
+        match x {
+            ',' | ')' | ';' | '=' | '[' => true,
+            _ => false
+        }
+    })(text)?;
     return match pin_index(text) {
         Ok((text, (start, end))) => Ok((text, Pin {
             name: name.to_string(),
@@ -357,7 +362,7 @@ aaaa
                             end: 0,
                         },
                         Pin {
-                            name: "out".to_string(),
+                            name: "out1".to_string(),
                             start: 0,
                             end: 0,
                         },

@@ -2,12 +2,12 @@
 /**
 * and this is a multiline comment
 */
-CHIP Example {
+CHIP Example2 {
     IN a, b;
     OUT out;
 
     PARTS:
-    	Test(a[0..3]=a[0..3],b=b,out=out1);
-    	Test(a[0]=a,b=b,out=out);
-    	Test(a=a,b=b,out=out);
+    	Test(a=a,b=b,out=o1);
+    	Test1(a=o1,b=b,out=o2);
+    	Test2(a=o2,b=b,out=out);
 }
