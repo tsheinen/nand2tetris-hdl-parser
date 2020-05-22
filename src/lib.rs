@@ -23,6 +23,8 @@ use nom::combinator::{not, opt};
 use nom::{IResult, Err};
 use nom::multi::{many0, many1};
 use core::fmt;
+use nom::error::{VerboseError, convert_error};
+use std::error::Error;
 
 /// A type that represents a pin
 ///
@@ -93,17 +95,41 @@ pub struct Part {
     external: Vec<Pin>,
 }
 
+/// Error returned when HDL cannot be parsed
+#[derive(Debug)]
+pub struct HDLParseError {
+    details: String
+}
+
+impl HDLParseError {
+    fn new(msg: &str) -> HDLParseError {
+        HDLParseError { details: msg.to_string() }
+    }
+}
+
+impl fmt::Display for HDLParseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.details)
+    }
+}
+
+impl Error for HDLParseError {
+    fn description(&self) -> &str {
+        &self.details
+    }
+}
+
 
 /// Try to consume whitespace, line comments, and multiline comments until all three fail on the same text
 /// Matches 0 or more
-fn separator(text: &str) -> IResult<&str, ()> {
-    fn comment_line(text: &str) -> IResult<&str, ()> {
+fn separator(text: &str) -> IResult<&str, (), VerboseError<&str>> {
+    fn comment_line(text: &str) -> IResult<&str, (), VerboseError<&str>> {
         let (text, _) = tag("//")(text)?;
         let (text, _) = take_until("\n")(text)?;
         let (text, _) = line_ending(text)?;
         Ok((text, ()))
     }
-    fn comment_multiline(text: &str) -> IResult<&str, ()> {
+    fn comment_multiline(text: &str) -> IResult<&str, (), VerboseError<&str>> {
         let (text, _) = tag("/**")(text)?;
         let (text, _) = take_until("*/")(text)?;
         let (text, _) = tag("*/")(text)?;
@@ -116,19 +142,19 @@ fn separator(text: &str) -> IResult<&str, ()> {
 /// Parses a pin descriptor into a [Pin]
 ///
 /// `a[0..3]` will become Pin { name: "a", start: 0, end: 3 }
-fn pin(text: &str) -> IResult<&str, Pin> {
+fn pin(text: &str) -> IResult<&str, Pin, VerboseError<&str>> {
     /// parses a pin range descriptor into `(u32, u32)`.  Both u32 will be the same if the range is a single number.
     ///
     /// `[0..3]` will parse into (0, 3) and `[0]` will parse into (0,0)
-    fn pin_index(text: &str) -> IResult<&str, (u32, u32)> {
-        fn internal_pin_single(text: &str) -> IResult<&str, (u32, u32)> {
+    fn pin_index(text: &str) -> IResult<&str, (u32, u32), VerboseError<&str>> {
+        fn internal_pin_single(text: &str) -> IResult<&str, (u32, u32), VerboseError<&str>> {
             let (text, _) = tag("[")(text)?;
             let (text, index) = digit1(text)?;
             let (text, _) = tag("]")(text)?;
 
             Ok((text, (index.parse::<u32>().unwrap_or(0), index.parse::<u32>().unwrap_or(0))))
         }
-        fn internal_pin_range(text: &str) -> IResult<&str, (u32, u32)> {
+        fn internal_pin_range(text: &str) -> IResult<&str, (u32, u32), VerboseError<&str>> {
             let (text, _) = tag("[")(text)?;
             let (text, start) = digit1(text)?;
             let (text, _) = tag("..")(text)?;
@@ -160,8 +186,8 @@ fn pin(text: &str) -> IResult<&str, Pin> {
 /// Parses a part descriptor into a [Part]
 ///
 /// `Test(a[0..3]=a[0..3],b=b,out=out);` will become a part with the name `Test` and the pins parsed with [part_pin]
-fn part(text: &str) -> IResult<&str, Part> {
-    fn internal_part(text: &str) -> IResult<&str, (Pin, Pin)> {
+fn part(text: &str) -> IResult<&str, Part, VerboseError<&str>> {
+    fn internal_part(text: &str) -> IResult<&str, (Pin, Pin), VerboseError<&str>> {
         let (text, _) = not(tag(")"))(text)?;
         let (text, pin1) = pin(text)?;
         let (text, _) = tag("=")(text)?;
@@ -189,8 +215,8 @@ fn part(text: &str) -> IResult<&str, Part> {
 /// parse input/output pin line with arbitrary label
 ///
 /// `IN a, b;` would parse into a `Vec<Pin>` with two pins - a and b
-fn parse_io_pins<'a>(text: &'a str, label: &str) -> IResult<&'a str, Vec<Pin>> {
-    fn interface_pin(text: &str) -> IResult<&str, Pin> {
+fn parse_io_pins<'a>(text: &'a str, label: &str) -> IResult<&'a str, Vec<Pin>, VerboseError<&'a str>> {
+    fn interface_pin(text: &str) -> IResult<&str, Pin, VerboseError<&str>> {
         let (text, _) = not(tag(";"))(text)?;
         let (text, pin) = pin(text)?;
 
@@ -213,9 +239,9 @@ fn parse_io_pins<'a>(text: &'a str, label: &str) -> IResult<&'a str, Vec<Pin>> {
 }
 
 
-/// parse_hdl will consume text and return `Result<Chip, Err<(&str, nom::error::ErrorKind)>>` depending on if it can successfully be parsed
-pub fn parse_hdl(text: &str) -> Result<Chip, Err<(&str, nom::error::ErrorKind)>> {
-    fn parse_hdl_internal(text: &str) -> IResult<&str, Chip> {
+/// parse_hdl will consume text and return `Result<Chip, Error>` depending on if it can successfully be parsed
+pub fn parse_hdl(text: &str) -> Result<Chip, HDLParseError> {
+    fn parse_hdl_internal(text: &str) -> IResult<&str, Chip, VerboseError<&str>> {
         let (text, _) = separator(text)?;
         let (text, _) = tag("CHIP")(text)?;
 
@@ -241,7 +267,10 @@ pub fn parse_hdl(text: &str) -> Result<Chip, Err<(&str, nom::error::ErrorKind)>>
 
     match parse_hdl_internal(text) {
         Ok((_, chip)) => Ok(chip),
-        Err(e) => Err(e)
+        Err(Err::Error(e)) | Err(Err::Failure(e)) => {
+            Err(HDLParseError::new(&convert_error(text, e)))
+        }
+        _ => { Err(HDLParseError::new("Should never happen, report it if it does")) }
     }
 }
 
@@ -254,7 +283,11 @@ mod tests {
 
     #[test]
     fn fails_parse() -> Result<(), Error> {
-        assert_eq!(format!("{}",parse_hdl("aaaa ").err().unwrap()), "Parsing Error: (\"aaaa \", Tag)");
+        assert_eq!(format!("{}", parse_hdl("aaaa ").err().unwrap()), "0: at line 1, in Tag:
+aaaa
+^
+
+");
         Ok(())
     }
 
