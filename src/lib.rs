@@ -31,17 +31,20 @@ use std::error::Error;
 /**
 ```rust
 pub struct Pin {
-    name: String,
-    start: u32,
-    end: u32,
+    pub name: String,
+    pub start: u32,
+    pub end: u32,
 }
 ```
 */
 #[derive(Eq, PartialEq, Hash, Clone)]
 pub struct Pin {
-    name: String,
-    start: u32,
-    end: u32,
+    /// Holds the name of the pin
+    pub name: String,
+    /// Holds the start of the slice range
+    pub start: u32,
+    /// Holds the end of the slice range
+    pub end: u32,
 }
 
 impl fmt::Debug for Pin {
@@ -61,19 +64,23 @@ impl fmt::Debug for Pin {
 ```rust
 use nand2tetris_hdl_parser::{Part, Pin};
 pub struct Chip {
-    name: String,
-    inputs: Vec<Pin>,
-    outputs: Vec<Pin>,
-    parts: Vec<Part>,
+    pub name: String,
+    pub inputs: Vec<Pin>,
+    pub outputs: Vec<Pin>,
+    pub parts: Vec<Part>,
 }
 ```
 */
 #[derive(Debug, Eq, PartialEq, Hash, Clone)]
 pub struct Chip {
-    name: String,
-    inputs: Vec<Pin>,
-    outputs: Vec<Pin>,
-    parts: Vec<Part>,
+    /// Holds the name of the chip
+    pub name: String,
+    /// Holds a list of input pins
+    pub inputs: Vec<Pin>,
+    /// Holds a list of output pins
+    pub outputs: Vec<Pin>,
+    /// Holds a list of parts
+    pub parts: Vec<Part>,
 }
 
 /// A type that represents a part
@@ -82,17 +89,20 @@ pub struct Chip {
 ```rust
 use nand2tetris_hdl_parser::Pin;
 pub struct Part {
-    name: String,
-    internal: Vec<Pin>,
-    external: Vec<Pin>,
+    pub name: String,
+    pub internal: Vec<Pin>,
+    pub external: Vec<Pin>,
 }
 ```
 */
 #[derive(Debug, Eq, PartialEq, Hash, Clone)]
 pub struct Part {
-    name: String,
-    internal: Vec<Pin>,
-    external: Vec<Pin>,
+    /// Holds the name of the part
+    pub name: String,
+    /// Holds internal connections (the pins which match up to the input pins of the part)
+    pub internal: Vec<Pin>,
+    /// Holds external connections
+    pub external: Vec<Pin>,
 }
 
 /// Error returned when HDL cannot be parsed
