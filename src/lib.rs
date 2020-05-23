@@ -179,10 +179,11 @@ fn pin(text: &str) -> IResult<&str, Pin, VerboseError<&str>> {
     let (text, _) = take_till(|x| is_alphabetic(x as u8))(text)?;
     let (text, name) = take_till(|x| {
         match x {
-            ',' | ')' | ';' | '=' | '[' => true,
+            ',' | ')' | ';' | '=' | '[' | ' ' => true,
             _ => false
         }
     })(text)?;
+    let (text, _) = separator(text)?;
     return match pin_index(text) {
         Ok((text, (start, end))) => Ok((text, Pin {
             name: name.to_string(),
