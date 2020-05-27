@@ -2,28 +2,27 @@
 
 #![forbid(unsafe_code)]
 #![deny(
-missing_debug_implementations,
-missing_docs,
-trivial_casts,
-trivial_numeric_casts,
-unused_extern_crates,
-unused_import_braces,
-unused_qualifications,
-unused_results,
-warnings
+    missing_debug_implementations,
+    missing_docs,
+    trivial_casts,
+    trivial_numeric_casts,
+    unused_extern_crates,
+    unused_import_braces,
+    unused_qualifications,
+    unused_results,
+    warnings
 )]
 
-
+use core::fmt;
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take_till, take_until};
-use nom::character::{is_alphabetic, is_alphanumeric};
 use nom::character::complete::{line_ending, multispace1};
 use nom::character::streaming::digit1;
+use nom::character::{is_alphabetic, is_alphanumeric};
 use nom::combinator::{not, opt};
-use nom::{IResult, Err};
+use nom::error::{convert_error, VerboseError};
 use nom::multi::{many0, many1};
-use core::fmt;
-use nom::error::{VerboseError, convert_error};
+use nom::{Err, IResult};
 use std::error::Error;
 
 /// A type that represents a pin
@@ -50,13 +49,19 @@ pub struct Pin {
 impl fmt::Debug for Pin {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.start == self.end {
-            f.debug_struct("Pin").field("name", &self.name).field("index", &self.start).finish()
+            f.debug_struct("Pin")
+                .field("name", &self.name)
+                .field("index", &self.start)
+                .finish()
         } else {
-            f.debug_struct("Pin").field("name", &self.name).field("start", &self.start).field("end", &self.end).finish()
+            f.debug_struct("Pin")
+                .field("name", &self.name)
+                .field("start", &self.start)
+                .field("end", &self.end)
+                .finish()
         }
     }
 }
-
 
 /// A type that represents a chip
 ///
@@ -108,12 +113,14 @@ pub struct Part {
 /// Error returned when HDL cannot be parsed
 #[derive(Debug)]
 pub struct HDLParseError {
-    details: String
+    details: String,
 }
 
 impl HDLParseError {
     fn new(msg: &str) -> HDLParseError {
-        HDLParseError { details: msg.to_string() }
+        HDLParseError {
+            details: msg.to_string(),
+        }
     }
 }
 
@@ -128,7 +135,6 @@ impl Error for HDLParseError {
         &self.details
     }
 }
-
 
 /// Try to consume whitespace, line comments, and multiline comments until all three fail on the same text
 /// Matches 0 or more
@@ -146,7 +152,15 @@ fn separator(text: &str) -> IResult<&str, (), VerboseError<&str>> {
 
         Ok((text, ()))
     }
-    Ok((many0(alt((|x| Ok((multispace1(x)?.0, ())), comment_line, comment_multiline)))(text)?.0, ()))
+    Ok((
+        many0(alt((
+            |x| Ok((multispace1(x)?.0, ())),
+            comment_line,
+            comment_multiline,
+        )))(text)?
+        .0,
+        (),
+    ))
 }
 
 /// Parses a pin descriptor into a [Pin]
@@ -162,7 +176,13 @@ fn pin(text: &str) -> IResult<&str, Pin, VerboseError<&str>> {
             let (text, index) = digit1(text)?;
             let (text, _) = tag("]")(text)?;
 
-            Ok((text, (index.parse::<u32>().unwrap_or(0), index.parse::<u32>().unwrap_or(0))))
+            Ok((
+                text,
+                (
+                    index.parse::<u32>().unwrap_or(0),
+                    index.parse::<u32>().unwrap_or(0),
+                ),
+            ))
         }
         fn internal_pin_range(text: &str) -> IResult<&str, (u32, u32), VerboseError<&str>> {
             let (text, _) = tag("[")(text)?;
@@ -171,33 +191,44 @@ fn pin(text: &str) -> IResult<&str, Pin, VerboseError<&str>> {
             let (text, end) = digit1(text)?;
             let (text, _) = tag("]")(text)?;
 
-            Ok((text, (start.parse::<u32>().unwrap_or(0), end.parse::<u32>().unwrap_or(0))))
+            Ok((
+                text,
+                (
+                    start.parse::<u32>().unwrap_or(0),
+                    end.parse::<u32>().unwrap_or(0),
+                ),
+            ))
         }
         alt((internal_pin_single, internal_pin_range))(text)
     }
 
     let (text, _) = take_till(|x| is_alphabetic(x as u8))(text)?;
-    let (text, name) = take_till(|x| {
-        match x {
-            ',' | ')' | ';' | '=' | '[' | ' ' => true,
-            _ => false
-        }
+    let (text, name) = take_till(|x| match x {
+        ',' | ')' | ';' | '=' | '[' | ' ' => true,
+        _ => false,
     })(text)?;
     let (text, _) = separator(text)?;
-    return match pin_index(text) {
-        Ok((text, (start, end))) => Ok((text, Pin {
-            name: name.to_string(),
-            start,
-            end,
-        })),
-        Err(_) => return Ok((text, Pin {
-            name: name.to_string(),
-            start: 0,
-            end: 0,
-        }))
-    };
+    match pin_index(text) {
+        Ok((text, (start, end))) => Ok((
+            text,
+            Pin {
+                name: name.to_string(),
+                start,
+                end,
+            },
+        )),
+        Err(_) => {
+            Ok((
+                text,
+                Pin {
+                    name: name.to_string(),
+                    start: 0,
+                    end: 0,
+                },
+            ))
+        }
+    }
 }
-
 
 /// Parses a part descriptor into a [Part]
 ///
@@ -221,17 +252,23 @@ fn part(text: &str) -> IResult<&str, Part, VerboseError<&str>> {
 
     let (text, _) = tag(");")(text)?;
     let (text, _) = separator(text)?;
-    Ok((text, Part {
-        name: name.to_string(),
-        internal: pins.0,
-        external: pins.1,
-    }))
+    Ok((
+        text,
+        Part {
+            name: name.to_string(),
+            internal: pins.0,
+            external: pins.1,
+        },
+    ))
 }
 
 /// parse input/output pin line with arbitrary label
 ///
 /// `IN a, b;` would parse into a `Vec<Pin>` with two pins - a and b
-fn parse_io_pins<'a>(text: &'a str, label: &str) -> IResult<&'a str, Vec<Pin>, VerboseError<&'a str>> {
+fn parse_io_pins<'a>(
+    text: &'a str,
+    label: &str,
+) -> IResult<&'a str, Vec<Pin>, VerboseError<&'a str>> {
     fn interface_pin(text: &str) -> IResult<&str, Pin, VerboseError<&str>> {
         let (text, _) = not(tag(";"))(text)?;
         let (text, pin) = pin(text)?;
@@ -254,7 +291,6 @@ fn parse_io_pins<'a>(text: &'a str, label: &str) -> IResult<&'a str, Vec<Pin>, V
     Ok((text, inputs))
 }
 
-
 /// parse_hdl will consume text and return `Result<Chip, Error>` depending on if it can successfully be parsed
 pub fn parse_hdl(text: &str) -> Result<Chip, HDLParseError> {
     fn parse_hdl_internal(text: &str) -> IResult<&str, Chip, VerboseError<&str>> {
@@ -267,18 +303,20 @@ pub fn parse_hdl(text: &str) -> Result<Chip, HDLParseError> {
         let (text, inputs) = parse_io_pins(text, "IN")?;
         let (text, outputs) = parse_io_pins(text, "OUT")?;
 
-
         let (text, _) = take_until("PARTS:")(text)?;
         let (text, _) = tag("PARTS:")(text)?;
         let (text, _) = separator(text)?;
         let (text, parts) = many0(part)(text)?;
 
-        return Ok((text, Chip {
-            name: chip_name.to_string(),
-            inputs,
-            outputs,
-            parts,
-        }));
+        Ok((
+            text,
+            Chip {
+                name: chip_name.to_string(),
+                inputs,
+                outputs,
+                parts,
+            },
+        ))
     }
 
     match parse_hdl_internal(text) {
@@ -286,24 +324,28 @@ pub fn parse_hdl(text: &str) -> Result<Chip, HDLParseError> {
         Err(Err::Error(e)) | Err(Err::Failure(e)) => {
             Err(HDLParseError::new(&convert_error(text, e)))
         }
-        _ => { Err(HDLParseError::new("Should never happen, report it if it does")) }
+        _ => Err(HDLParseError::new(
+            "Should never happen, report it if it does",
+        )),
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use crate::{Chip, Pin, Part, parse_hdl, parse_io_pins};
+    use crate::{parse_hdl, parse_io_pins, Chip, Part, Pin};
     use std::fs;
     use std::io::Error;
 
     #[test]
     fn fails_parse() -> Result<(), Error> {
-        assert_eq!(format!("{}", parse_hdl("aaaa ").err().unwrap()), "0: at line 1, in Tag:
+        assert_eq!(
+            format!("{}", parse_hdl("aaaa ").err().unwrap()),
+            "0: at line 1, in Tag:
 aaaa
 ^
 
-");
+"
+        );
         Ok(())
     }
 
@@ -324,13 +366,11 @@ aaaa
                     end: 0,
                 },
             ],
-            outputs: vec![
-                Pin {
-                    name: "out".to_string(),
-                    start: 0,
-                    end: 0,
-                },
-            ],
+            outputs: vec![Pin {
+                name: "out".to_string(),
+                start: 0,
+                end: 0,
+            }],
             parts: vec![
                 Part {
                     name: "Test".to_string(),
@@ -454,37 +494,58 @@ aaaa
         let text = "    IN a, b;
 ";
         let (_, pins) = parse_io_pins(text, "IN").unwrap_or(("", vec![]));
-        assert_eq!(pins, vec![
-            Pin {
-                name: "a".to_string(),
-                start: 0,
-                end: 0,
-            },
-            Pin {
-                name: "b".to_string(),
-                start: 0,
-                end: 0,
-            }
-        ]);
+        assert_eq!(
+            pins,
+            vec![
+                Pin {
+                    name: "a".to_string(),
+                    start: 0,
+                    end: 0,
+                },
+                Pin {
+                    name: "b".to_string(),
+                    start: 0,
+                    end: 0,
+                }
+            ]
+        );
         Ok(())
     }
 
     #[test]
     fn test_pin_debug_display() -> Result<(), Error> {
-        let index_same_formatted: String = format!("{:?}", Pin {
-            name: "placeholder".to_string(),
-            start: 0,
-            end: 0,
-        }).chars().filter(|c| !c.is_whitespace()).collect();
-        let index_same_cmp: String = "Pin { name: \"placeholder\", index: 0 }".chars().filter(|c| !c.is_whitespace()).collect();
+        let index_same_formatted: String = format!(
+            "{:?}",
+            Pin {
+                name: "placeholder".to_string(),
+                start: 0,
+                end: 0,
+            }
+        )
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .collect();
+        let index_same_cmp: String = "Pin { name: \"placeholder\", index: 0 }"
+            .chars()
+            .filter(|c| !c.is_whitespace())
+            .collect();
         assert_eq!(index_same_formatted, index_same_cmp);
 
-        let index_different_formatted: String = format!("{:?}", Pin {
-            name: "placeholder".to_string(),
-            start: 3,
-            end: 4,
-        }).chars().filter(|c| !c.is_whitespace()).collect();
-        let index_different_cmp: String = "Pin { name: \"placeholder\", start: 3, end: 4 }".chars().filter(|c| !c.is_whitespace()).collect();
+        let index_different_formatted: String = format!(
+            "{:?}",
+            Pin {
+                name: "placeholder".to_string(),
+                start: 3,
+                end: 4,
+            }
+        )
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .collect();
+        let index_different_cmp: String = "Pin { name: \"placeholder\", start: 3, end: 4 }"
+            .chars()
+            .filter(|c| !c.is_whitespace())
+            .collect();
         assert_eq!(index_different_formatted, index_different_cmp);
 
         Ok(())
