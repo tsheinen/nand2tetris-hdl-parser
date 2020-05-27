@@ -6,7 +6,7 @@ edition = "2018"
 repository = "https://github.com/tcheinen/nand2tetris-hdl-parser"
 license = "MIT"
 description = "Parser for Nand2Tetris HDL files"
-exclude = [".idea/*"]
+exclude = [".idea/*", "target"]
 
 [dependencies]
 nom = "5"
