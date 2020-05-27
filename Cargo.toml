@@ -6,7 +6,7 @@ edition = "2018"
 repository = "https://github.com/tcheinen/nand2tetris-hdl-parser"
 license = "MIT"
 description = "Parser for Nand2Tetris HDL files"
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+exclude = [".idea/*"]
 
 [dependencies]
 nom = "5"
