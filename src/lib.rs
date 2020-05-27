@@ -89,6 +89,8 @@ pub struct Chip {
 }
 
 /// A type that represents a part
+/// Internal pins are pins that match up to an input/output of the part - the first pin in a {}={} pair
+/// Internal pins are pins that match up to another part of the chip - the second pin in a {}={} pair
 ///
 /**
 ```rust
