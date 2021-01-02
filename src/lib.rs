@@ -2,25 +2,25 @@
 
 #![forbid(unsafe_code)]
 #![deny(
-    missing_debug_implementations,
-    missing_docs,
-    trivial_casts,
-    trivial_numeric_casts,
-    unused_extern_crates,
-    unused_import_braces,
-    unused_qualifications,
-    unused_results,
-    warnings
+missing_debug_implementations,
+missing_docs,
+trivial_casts,
+trivial_numeric_casts,
+unused_extern_crates,
+unused_import_braces,
+unused_qualifications,
+unused_results,
+warnings
 )]
 
 use core::fmt;
 use nom::branch::alt;
-use nom::bytes::complete::{tag, take_till, take_until};
+use nom::bytes::complete::{tag, take_till, take_until, take_while1};
 use nom::character::complete::{line_ending, multispace1};
 use nom::character::streaming::digit1;
 use nom::character::{is_alphabetic, is_alphanumeric};
 use nom::combinator::{not, opt};
-use nom::error::{convert_error, VerboseError};
+use nom::error::{convert_error, VerboseError, context};
 use nom::multi::{many0, many1};
 use nom::{Err, IResult};
 use std::error::Error;
@@ -160,7 +160,7 @@ fn separator(text: &str) -> IResult<&str, (), VerboseError<&str>> {
             comment_line,
             comment_multiline,
         )))(text)?
-        .0,
+            .0,
         (),
     ))
 }
@@ -243,16 +243,18 @@ fn part(text: &str) -> IResult<&str, Part, VerboseError<&str>> {
         let (text, pin2) = pin(text)?;
         Ok((text, (pin1, pin2)))
     }
-    let (text, _) = take_till(|x| is_alphabetic(x as u8))(text)?;
-    let (text, name) = take_until("(")(text)?;
-    let (text, _) = tag("(")(text)?;
+
+    let (text, _) = separator(text)?;
+    let (text, name) = context("expected nonzero length alphanumeric identifier", take_while1(|x| is_alphanumeric(x as u8)))(text)?;
+    let (text, _) = separator(text)?;
+    let (text, _) = context("symbol \"(\"", tag("("))(text)?;
     let (text, pins) = many0(internal_part)(text)?;
     let pins = pins
         .iter()
         .map(|&(ref a, ref b)| (a.clone(), b.clone()))
         .unzip();
 
-    let (text, _) = tag(");")(text)?;
+    let (text, _) = context("symbol \");\"", tag(");"))(text)?;
     let (text, _) = separator(text)?;
     Ok((
         text,
@@ -269,7 +271,7 @@ fn part(text: &str) -> IResult<&str, Part, VerboseError<&str>> {
 /// `IN a, b;` would parse into a `Vec<Pin>` with two pins - a and b
 fn parse_io_pins<'a>(
     text: &'a str,
-    label: &str,
+    label: &'static str,
 ) -> IResult<&'a str, Vec<Pin>, VerboseError<&'a str>> {
     fn interface_pin(text: &str) -> IResult<&str, Pin, VerboseError<&str>> {
         let (text, _) = not(tag(";"))(text)?;
@@ -284,10 +286,10 @@ fn parse_io_pins<'a>(
     let (text, _) = take_until(label)(text)?;
 
     let (text, _) = separator(text)?;
-    let (text, _) = tag(label)(text)?;
+    let (text, _) = context(label, tag(label))(text)?;
     let (text, _) = separator(text)?;
 
-    let (text, inputs) = many1(interface_pin)(text)?;
+    let (text, inputs) = many1(context("Pin", interface_pin))(text)?;
 
     let (text, _) = separator(text)?;
     Ok((text, inputs))
@@ -297,16 +299,16 @@ fn parse_io_pins<'a>(
 pub fn parse_hdl(text: &str) -> Result<Chip, HDLParseError> {
     fn parse_hdl_internal(text: &str) -> IResult<&str, Chip, VerboseError<&str>> {
         let (text, _) = separator(text)?;
-        let (text, _) = tag("CHIP")(text)?;
+        let (text, _) = context("symbol \"CHIP\"", tag("CHIP"))(text)?;
 
         let (text, _) = separator(text)?;
-        let (text, chip_name) = take_till(|x| !is_alphanumeric(x as u8))(text)?;
+        let (text, chip_name) = context("alphanumeric identifier (for name)", take_till(|x| !is_alphanumeric(x as u8)))(text)?;
 
         let (text, inputs) = parse_io_pins(text, "IN")?;
         let (text, outputs) = parse_io_pins(text, "OUT")?;
 
         let (text, _) = take_until("PARTS:")(text)?;
-        let (text, _) = tag("PARTS:")(text)?;
+        let (text, _) = context("symbol \"PARTS:\"", tag("PARTS:"))(text)?;
         let (text, _) = separator(text)?;
         let (text, parts) = many0(part)(text)?;
 
@@ -343,6 +345,10 @@ mod tests {
         assert_eq!(
             format!("{}", parse_hdl("aaaa ").err().unwrap()),
             "0: at line 1, in Tag:
+aaaa
+^
+
+1: at line 1, in symbol \"CHIP\":
 aaaa
 ^
 
@@ -524,9 +530,9 @@ aaaa
                 end: 0,
             }
         )
-        .chars()
-        .filter(|c| !c.is_whitespace())
-        .collect();
+            .chars()
+            .filter(|c| !c.is_whitespace())
+            .collect();
         let index_same_cmp: String = "Pin { name: \"placeholder\", index: 0 }"
             .chars()
             .filter(|c| !c.is_whitespace())
@@ -541,9 +547,9 @@ aaaa
                 end: 4,
             }
         )
-        .chars()
-        .filter(|c| !c.is_whitespace())
-        .collect();
+            .chars()
+            .filter(|c| !c.is_whitespace())
+            .collect();
         let index_different_cmp: String = "Pin { name: \"placeholder\", start: 3, end: 4 }"
             .chars()
             .filter(|c| !c.is_whitespace())
