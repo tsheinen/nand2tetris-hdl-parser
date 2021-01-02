@@ -24,6 +24,7 @@ use nom::error::{convert_error, VerboseError, context};
 use nom::multi::{many0, many1};
 use nom::{Err, IResult};
 use std::error::Error;
+use serde::{Deserialize, Serialize};
 
 /// A type that represents a pin
 ///
@@ -36,7 +37,7 @@ pub struct Pin {
 }
 ```
 */
-#[derive(Eq, PartialEq, Hash, Clone)]
+#[derive(Eq, PartialEq, Hash, Clone, Serialize, Deserialize)]
 pub struct Pin {
     /// Holds the name of the pin
     pub name: String,
@@ -76,7 +77,7 @@ pub struct Chip {
 }
 ```
 */
-#[derive(Debug, Eq, PartialEq, Hash, Clone)]
+#[derive(Debug, Eq, PartialEq, Hash, Clone, Serialize, Deserialize)]
 pub struct Chip {
     /// Holds the name of the chip
     pub name: String,
@@ -102,7 +103,7 @@ pub struct Part {
 }
 ```
 */
-#[derive(Debug, Eq, PartialEq, Hash, Clone)]
+#[derive(Debug, Eq, PartialEq, Hash, Clone, Serialize, Deserialize)]
 pub struct Part {
     /// Holds the name of the part
     pub name: String,
