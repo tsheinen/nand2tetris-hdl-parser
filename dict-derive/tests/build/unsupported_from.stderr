@@ -1,0 +1,21 @@
+error[E0277]: the trait bound `Test: PyClass` is not satisfied
+ --> $DIR/unsupported_from.rs:9:11
+  |
+7 | #[derive(FromPyObject)]
+  |          ------------ required by this bound in `extract_required`
+8 | struct Derived {
+9 |     test: Test,
+  |           ^^^^ the trait `PyClass` is not implemented for `Test`
+  |
+  = note: required because of the requirements on the impl of `FromPyObject<'_>` for `Test`
+
+error[E0277]: the trait bound `Test: Clone` is not satisfied
+ --> $DIR/unsupported_from.rs:9:11
+  |
+7 | #[derive(FromPyObject)]
+  |          ------------ required by this bound in `extract_required`
+8 | struct Derived {
+9 |     test: Test,
+  |           ^^^^ the trait `Clone` is not implemented for `Test`
+  |
+  = note: required because of the requirements on the impl of `FromPyObject<'_>` for `Test`
