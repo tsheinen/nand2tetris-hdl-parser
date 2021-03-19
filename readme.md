@@ -7,6 +7,7 @@ I used [maturin](https://github.com/PyO3/maturin) to build this.  the process go
 ```text
 pip install maturin
 venv dev # macro i have to select virtualenvs -- you'll want to be in one because it'll refuse to install otherwise
+git checkout pyo3
 maturin develop
 ```
 
