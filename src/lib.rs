@@ -13,6 +13,8 @@ unused_results,
 warnings
 )]
 
+mod python;
+
 use core::fmt;
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take_till, take_until, take_while1};
@@ -25,6 +27,7 @@ use nom::multi::{many0, many1};
 use nom::{Err, IResult};
 use std::error::Error;
 use serde::{Deserialize, Serialize};
+use dict_derive::{FromPyObject, IntoPyObject};
 
 /// A type that represents a pin
 ///
@@ -37,7 +40,7 @@ pub struct Pin {
 }
 ```
 */
-#[derive(Eq, PartialEq, Hash, Clone, Serialize, Deserialize)]
+#[derive(Eq, PartialEq, Hash, Clone, Serialize, Deserialize, FromPyObject, IntoPyObject)]
 pub struct Pin {
     /// Holds the name of the pin
     pub name: String,
@@ -77,7 +80,7 @@ pub struct Chip {
 }
 ```
 */
-#[derive(Debug, Eq, PartialEq, Hash, Clone, Serialize, Deserialize)]
+#[derive(Debug, Eq, PartialEq, Hash, Clone, Serialize, Deserialize, FromPyObject, IntoPyObject)]
 pub struct Chip {
     /// Holds the name of the chip
     pub name: String,
@@ -103,7 +106,7 @@ pub struct Part {
 }
 ```
 */
-#[derive(Debug, Eq, PartialEq, Hash, Clone, Serialize, Deserialize)]
+#[derive(Debug, Eq, PartialEq, Hash, Clone, Serialize, Deserialize, FromPyObject, IntoPyObject)]
 pub struct Part {
     /// Holds the name of the part
     pub name: String,
@@ -112,6 +115,8 @@ pub struct Part {
     /// Holds external connections
     pub external: Vec<Pin>,
 }
+
+
 
 /// Error returned when HDL cannot be parsed
 #[derive(Debug)]
