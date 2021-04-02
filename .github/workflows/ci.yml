@@ -32,7 +32,11 @@ jobs:
           pip install cffi maturin
       - name: py-install
         run: |
-          maturin build --release      
-
+          maturin build --release
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+            name: wheel
+            path: target/wheels
         
 
