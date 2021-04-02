@@ -5,8 +5,9 @@ on: [push]
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
-        platform: [macOS-latest, windows-latest]
+        platform: [ubuntu-latest, macOS-latest, windows-latest]
     runs-on: ${{ matrix.platform }}
 
     steps:
