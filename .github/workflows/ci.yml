@@ -8,6 +8,13 @@ jobs:
       fail-fast: false
       matrix:
         platform: [ubuntu-latest, macOS-latest, windows-latest]
+        include:
+        - os: macOS-latest
+          TARGET: x86_64-apple-darwin
+        - os: windows-latest
+          TARGET: x86_64-pc-windows-msvc
+        - os: ubuntu-latest
+          TARGET: x86_64-unknown-linux-musl
     runs-on: ${{ matrix.platform }}
 
     steps:
@@ -19,6 +26,7 @@ jobs:
             profile: minimal
             toolchain: stable
             override: true
+            target: ${{matrix.TARGET}}
       - name: Setup Python environment
         uses: actions/setup-python@v2
         with:
