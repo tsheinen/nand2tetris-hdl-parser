@@ -8,7 +8,6 @@ jobs:
       fail-fast: false
       matrix:
         platform: [ubuntu-latest, macOS-latest, windows-latest]
-        python: [3.9]
     runs-on: ${{ matrix.platform }}
 
     steps:
@@ -20,16 +19,10 @@ jobs:
             profile: minimal
             toolchain: stable
             override: true
-      - if: startsWith(matrix.os,'ubuntu') == true
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          target: x86_64-unknown-linux-musl
       - name: Setup Python environment
         uses: actions/setup-python@v2
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: 3.9
       - name: rust-cargo
         uses: actions-rs/cargo@v1.0.1
         with:
