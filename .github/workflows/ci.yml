@@ -14,13 +14,13 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v1
-      - if: matrix.os != 'ubuntu-latest'
+      - name: setup toolchain
         uses: actions-rs/toolchain@v1
         with:
             profile: minimal
             toolchain: stable
             override: true
-      - if: matrix.os == 'ubuntu-latest'
+      - if: startsWith(matrix.os,'ubuntu') == true
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
