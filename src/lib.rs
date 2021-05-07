@@ -35,8 +35,8 @@ use dict_derive::{FromPyObject, IntoPyObject};
 ```rust
 pub struct Pin {
     pub name: String,
-    pub start: u32,
-    pub end: u32,
+    pub start: i32,
+    pub end: i32,
 }
 ```
 */
@@ -45,9 +45,9 @@ pub struct Pin {
     /// Holds the name of the pin
     pub name: String,
     /// Holds the start of the slice range
-    pub start: u32,
+    pub start: i32,
     /// Holds the end of the slice range
-    pub end: u32,
+    pub end: i32,
 }
 
 impl fmt::Debug for Pin {
@@ -174,12 +174,13 @@ fn separator(text: &str) -> IResult<&str, (), VerboseError<&str>> {
 /// Parses a pin descriptor into a [Pin]
 ///
 /// `a[0..3]` will become Pin { name: "a", start: 0, end: 3 }
+/// `a` will become Pin { name: "a", start: -1, end: -1 }
 fn pin(text: &str) -> IResult<&str, Pin, VerboseError<&str>> {
     /// parses a pin range descriptor into `(u32, u32)`.  Both u32 will be the same if the range is a single number.
     ///
     /// `[0..3]` will parse into (0, 3) and `[0]` will parse into (0,0)
-    fn pin_index(text: &str) -> IResult<&str, (u32, u32), VerboseError<&str>> {
-        fn internal_pin_single(text: &str) -> IResult<&str, (u32, u32), VerboseError<&str>> {
+    fn pin_index(text: &str) -> IResult<&str, (i32, i32), VerboseError<&str>> {
+        fn internal_pin_single(text: &str) -> IResult<&str, (i32, i32), VerboseError<&str>> {
             let (text, _) = tag("[")(text)?;
             let (text, index) = digit1(text)?;
             let (text, _) = tag("]")(text)?;
@@ -187,12 +188,12 @@ fn pin(text: &str) -> IResult<&str, Pin, VerboseError<&str>> {
             Ok((
                 text,
                 (
-                    index.parse::<u32>().unwrap_or(0),
-                    index.parse::<u32>().unwrap_or(0),
+                    index.parse::<i32>().unwrap_or(0),
+                    index.parse::<i32>().unwrap_or(0),
                 ),
             ))
         }
-        fn internal_pin_range(text: &str) -> IResult<&str, (u32, u32), VerboseError<&str>> {
+        fn internal_pin_range(text: &str) -> IResult<&str, (i32, i32), VerboseError<&str>> {
             let (text, _) = tag("[")(text)?;
             let (text, start) = digit1(text)?;
             let (text, _) = tag("..")(text)?;
@@ -202,8 +203,8 @@ fn pin(text: &str) -> IResult<&str, Pin, VerboseError<&str>> {
             Ok((
                 text,
                 (
-                    start.parse::<u32>().unwrap_or(0),
-                    end.parse::<u32>().unwrap_or(0),
+                    start.parse::<i32>().unwrap_or(0),
+                    end.parse::<i32>().unwrap_or(0),
                 ),
             ))
         }
@@ -230,8 +231,8 @@ fn pin(text: &str) -> IResult<&str, Pin, VerboseError<&str>> {
                 text,
                 Pin {
                     name: name.to_string(),
-                    start: 0,
-                    end: 0,
+                    start: -1,
+                    end: -1,
                 },
             ))
         }
